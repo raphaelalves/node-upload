@@ -30,8 +30,6 @@ const upload = multer({
 			fileSize : UPLOADED_FILE_MAX_SIZE
 		},
 		fileFilter: function(request,file,cb) {
-			// TODO: Check for files too big > 5mb
-			// Check if the uploaded file size doesn't exceed ~5mb (UPLOADED_FILE_MAX_SIZE constant)
 			if (!verifyExtensionRule(file.mimetype)) {
 				cb(new Error(ERROR_HANDLERS.INVALID_MIMETYPE));
 			} else {
