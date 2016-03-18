@@ -1,21 +1,3 @@
-// Configuration Section
-// Running Port
-const SERVICE_PORT = 3000;
-// Temporary Upload Folder
-const TMP_UPLOAD_PATH = 'tmp';
-// Upload Folder
-const UPLOAD_PATH = 'myUploads';
-// Max File Size To Be Uploaded
-const UPLOADED_FILE_MAX_SIZE = 5000000;
-// const UPLOADED_FILE_MAX_SIZE = 2;
-
-// HANDLING FILES ERRORS
-const ERROR_HANDLERS = {
-	"INVALID_MIMETYPE"   : "File mime type not supported",
-	"INVALID_FILESIZE"   : "File too large", // Can't change this string, shortcut to point to the err.code "LIMIT_FILE_SIZE" using the err.message instead
-	"RESOURCE_NOT_FOUND" : "The resource you requested ended unexpectedly"
-}
-
 // Importing external modules
 const http = require('http');
 const express = require('express');
@@ -23,24 +5,24 @@ const multer = require('multer');
 const fs = require('fs');
 const mmmagic = require('mmmagic');
 
+// Importing internal modules
+const config = require('./config/config.js');
+const helpers = require('./app_modules/helpers.js');
+
 const app = new express();
 const upload = multer({
-		dest: TMP_UPLOAD_PATH,
+		dest: config.upload.tmpPath,
 		limits: {
-			fileSize : UPLOADED_FILE_MAX_SIZE
+			fileSize : config.upload.fileMaxSize
 		},
 		fileFilter: function(request,file,cb) {
-			if (!verifyExtensionRule(file.mimetype)) {
-				cb(new Error(ERROR_HANDLERS.INVALID_MIMETYPE));
+			if (!helpers.validateMimeType(file.mimetype)) {
+				cb(new Error(config.upload.errors.INVALID_MIMETYPE));
 			} else {
 				cb(null,true);
 			}
 		}
 }).single('fileToUpload');
-
-function verifyExtensionRule (subject) {
-	return subject.match(/^image\/(jpeg|png)$/);
-}
 
 app.post('/', function(request, response) {
 
@@ -48,19 +30,19 @@ app.post('/', function(request, response) {
 	upload(request,response, function(err) {
 		if (err) {
 			switch (err.message) {
-				case ERROR_HANDLERS.INVALID_MIMETYPE:
+				case config.upload.errors.INVALID_MIMETYPE:
 					response.writeHead(415, {'Content-Type' : 'application/json'});
-					response.write("{responseCode: 415, reason: " + ERROR_HANDLERS.INVALID_MIMETYPE + "}");
+					response.write("{responseCode: 415, reason: " + config.upload.errors.INVALID_MIMETYPE + "}");
 					response.end();
 					break;
-				case ERROR_HANDLERS.INVALID_FILESIZE:
+				case config.upload.errors.INVALID_FILESIZE:
 					response.writeHead(413, {'Content-Type' : 'application/json'});
-					response.write("{responseCode: 413, reason: " + ERROR_HANDLERS.INVALID_FILESIZE + "}");
+					response.write("{responseCode: 413, reason: " + config.upload.errors.INVALID_FILESIZE + "}");
 					response.end();
 					break;
 				default:
 					response.writeHead(412, {'Content-Type' : 'application/json'});
-					response.write("{responseCode: 412, reason: " + ERROR_HANDLERS.RESOURCE_NOT_FOUND + "}");
+					response.write("{responseCode: 412, reason: " + config.upload.errors.RESOURCE_NOT_FOUND + "}");
 					response.end();
 					break;
 			}
@@ -72,20 +54,20 @@ app.post('/', function(request, response) {
 				if (err) {
 					fs.unlink(request.file.path)
 					response.writeHead(412, {'Content-Type' : 'application/json'});
-					response.write("{responseCode: 412, reason: " + ERROR_HANDLERS.RESOURCE_NOT_FOUND + "}");
+					response.write("{responseCode: 412, reason: " + config.upload.errors.RESOURCE_NOT_FOUND + "}");
 					response.end();
 				} else {
 					// Detect a fake Mime Type
-					if (!verifyExtensionRule(result)) {
+					if (!helpers.validateMimeType(result)) {
 						fs.unlink(request.file.path);
-						response.write("{responseCode: 415, reason: " + ERROR_HANDLERS.INVALID_MIMETYPE + "}");
+						response.write("{responseCode: 415, reason: " + config.upload.errors.INVALID_MIMETYPE + "}");
 						response.end();
 					} else {
 						// File passed all validations without errors to be handled
 						// TODO: Find a properly filename
-						var filename = 'ralves-' + Date.now();
+						var filename = Math.random(1,100) + Date.now();
 						var extension = request.file.originalname.match(/.+(\..+)/)[1];
-						var outputFolder = UPLOAD_PATH + '/' + filename + extension;
+						var outputFolder = config.upload.uploadPath + '/' + filename + extension;
 
 						console.log('From ' + request.file.path + ' To ' + outputFolder);
 						fs.rename(request.file.path, outputFolder, function(err) {
@@ -108,6 +90,6 @@ app.post('/', function(request, response) {
 });
 
 // Ask to the service keep listening the (SERVICE_PORT constant)
-app.listen(SERVICE_PORT, function() {
-	console.log('Running service at ' + SERVICE_PORT + ' Port');
+app.listen(config.server.servicePort, function() {
+	console.log('Running service at ' + config.server.servicePort + ' Port');
 });
