@@ -7,17 +7,20 @@ const mmmagic = require('mmmagic');
 
 // Importing internal modules
 const config = require('./config/config.js');
+const errorMap = require('./app_modules/errorsMap.js');
 const helpers = require('./app_modules/helpers.js');
 
 const app = new express();
 const upload = multer({
 		dest: config.upload.tmpPath,
+		dest: config.upload.tmpPath,
 		limits: {
+			files    : 1,
 			fileSize : config.upload.fileMaxSize
 		},
-		fileFilter: function(request,file,cb) {
+		fileFilter: function(request, file, cb) {
 			if (!helpers.validateMimeType(file.mimetype)) {
-				cb(new Error(config.upload.errors.INVALID_MIMETYPE));
+				cb(new Error(errorMap.upload.INVALID_MIMETYPE.message));
 			} else {
 				cb(null,true);
 			}
@@ -25,42 +28,41 @@ const upload = multer({
 }).single('fileToUpload');
 
 app.post('/', function(request, response) {
-
+	// Set the route default header
+	const headerContentType = {
+		'Content-Type' : 'application/json'
+	}
 	// Argument 'err' comes from the fileFilter callback
-	upload(request,response, function(err) {
+	upload(request, response, function(err) {
 		if (err) {
 			switch (err.message) {
-				case config.upload.errors.INVALID_MIMETYPE:
-					response.writeHead(415, {'Content-Type' : 'application/json'});
-					response.write("{responseCode: 415, reason: " + config.upload.errors.INVALID_MIMETYPE + "}");
+				case errorMap.upload.INVALID_MIMETYPE.message:
+					response.writeHead(errorMap.upload.INVALID_MIMETYPE.responseCode, {});
+					response.write("{reason: " + errorMap.upload.INVALID_MIMETYPE.message + "}");
 					response.end();
 					break;
-				case config.upload.errors.INVALID_FILESIZE:
-					response.writeHead(413, {'Content-Type' : 'application/json'});
-					response.write("{responseCode: 413, reason: " + config.upload.errors.INVALID_FILESIZE + "}");
-					response.end();
-					break;
-				default:
-					response.writeHead(412, {'Content-Type' : 'application/json'});
-					response.write("{responseCode: 412, reason: " + config.upload.errors.RESOURCE_NOT_FOUND + "}");
+				case errorMap.upload.INVALID_FILESIZE.message:
+					response.writeHead(errorMap.upload.INVALID_FILESIZE.responseCode, headerContentType);
+					response.write("{reason: " + errorMap.upload.INVALID_FILESIZE.message + "}");
 					response.end();
 					break;
 			}
 		} else {
-			var Magic = mmmagic.Magic; 
+			var Magic = mmmagic.Magic;
 			var magic = new Magic(mmmagic.MAGIC_MIME_TYPE);
 			// Double check the Mime Type to make sure its a valid one
 			magic.detectFile(request.file.path, function(err, result) {
 				if (err) {
 					fs.unlink(request.file.path)
-					response.writeHead(412, {'Content-Type' : 'application/json'});
-					response.write("{responseCode: 412, reason: " + config.upload.errors.RESOURCE_NOT_FOUND + "}");
+					response.writeHead(errorMap.upload.RESOURCE_NOT_FOUND.responseCode, headerContentType);
+					response.write("{reason: " + errorMap.upload.RESOURCE_NOT_FOUND.message + "}");
 					response.end();
 				} else {
 					// Detect a fake Mime Type
 					if (!helpers.validateMimeType(result)) {
 						fs.unlink(request.file.path);
-						response.write("{responseCode: 415, reason: " + config.upload.errors.INVALID_MIMETYPE + "}");
+						response.writeHead(errorMap.upload.INVALID_MIMETYPE.responseCode, headerContentType);
+						response.write("{reason: " + errorMap.upload.INVALID_MIMETYPE.message + "}");
 						response.end();
 					} else {
 						// File passed all validations without errors to be handled
@@ -73,12 +75,12 @@ app.post('/', function(request, response) {
 						fs.rename(request.file.path, outputFolder, function(err) {
 							if (err) {
 								fs.unlink(request.file.path);
-								response.writeHead(417, {'Content-Type' : 'application/json'});
-								response.write("{responseCode: 417, reason: 'Internal Problem', description:" + err.message + "}");
+								response.writeHead(417, headerContentType);
+								response.write("{reason: 'Internal Problem', description:" + err.message + "}");
 								response.end();
 							} else {
-								response.writeHead(200, {'Content-Type' : 'application/json'});
-								response.write("{responseCode: 200, reason: 'File succefully saved!', description:" + JSON.stringify(request.file) + "}");
+								response.writeHead(200, headerContentType);
+								response.write("{reason: 'File succefully saved!', description:" + JSON.stringify(request.file) + "}");
 								response.end();
 							}
 						});
