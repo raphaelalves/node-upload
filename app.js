@@ -27,6 +27,10 @@ const upload = multer({
 		}
 }).single('fileToUpload');
 
+app.get('/', function(request, response) {
+	response.sendFile(__dirname + '/public/views/index.html')
+});
+
 app.post('/', function(request, response) {
 	// Set the route default header
 	const headerContentType = {
@@ -37,7 +41,7 @@ app.post('/', function(request, response) {
 		if (err) {
 			switch (err.message) {
 				case errorMap.upload.INVALID_MIMETYPE.message:
-					response.writeHead(errorMap.upload.INVALID_MIMETYPE.responseCode, {});
+					response.writeHead(errorMap.upload.INVALID_MIMETYPE.responseCode, headerContentType);
 					response.write("{reason: " + errorMap.upload.INVALID_MIMETYPE.message + "}");
 					response.end();
 					break;
@@ -66,7 +70,6 @@ app.post('/', function(request, response) {
 						response.end();
 					} else {
 						// File passed all validations without errors to be handled
-						// TODO: Find a properly filename
 						var filename = Math.random(1,100) + Date.now();
 						var extension = request.file.originalname.match(/.+(\..+)/)[1];
 						var outputFolder = config.upload.uploadPath + '/' + filename + extension;
@@ -75,8 +78,8 @@ app.post('/', function(request, response) {
 						fs.rename(request.file.path, outputFolder, function(err) {
 							if (err) {
 								fs.unlink(request.file.path);
-								response.writeHead(417, headerContentType);
-								response.write("{reason: 'Internal Problem', description:" + err.message + "}");
+								response.writeHead(errorMap.server.INTERNAL_SERVER_ERROR.responseCode, headerContentType);
+								response.write("{reason: " + errorMap.server.INTERNAL_SERVER_ERROR.message + " description:" + err.message + "}");
 								response.end();
 							} else {
 								response.writeHead(200, headerContentType);

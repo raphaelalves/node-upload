@@ -10,9 +10,16 @@ errorMap.upload = {
     message: "File too large"
   },
 	"RESOURCE_NOT_FOUND" : {
-    responseCode: 412,
-    message: "The resource you requested ended unexpectedly"
+    responseCode: 501,
+    message: "The resource you requested is not supported"
   }
 };
+
+errorMap.server = {
+	"INTERNAL_SERVER_ERROR" : {
+			responseCode: 500,
+			message: "Internal Problem"
+	}
+}
 
 module.exports = errorMap;
