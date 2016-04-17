@@ -11,8 +11,9 @@ var fileManagement = {};
 		console.log('From ' + tmpFolder + ' To ' + config.upload.uploadPath);
 		fs.rename(tmpFolder, config.upload.uploadPath + '/' + filename, function(err) {
 			if (err) {
-				fs.unlink(request.file.path);
 				console.error(err);
+				// Removes the uploaded file which has error
+				fs.unlink(request.file.path);
 				throw(errorMap.server.INTERNAL_SERVER_ERROR);
 			}
 		});
