@@ -2,13 +2,13 @@
 const http = require('http');
 const express = require('express');
 const multer = require('multer');
-const fs = require('fs');
 const mmmagic = require('mmmagic');
 
 // Importing internal modules
 const config = require('./config/config.js');
 const errorMap = require('./app_modules/errorsMap.js');
 const helpers = require('./app_modules/helpers.js');
+const fileManagement = require('./app_modules/fileManagement.js');
 
 const app = new express();
 const upload = multer({
@@ -70,23 +70,19 @@ app.post('/', function(request, response) {
 						response.end();
 					} else {
 						// File passed all validations without errors to be handled
-						var filename = Math.random(1,100) + Date.now();
 						var extension = request.file.originalname.match(/.+(\..+)/)[1];
-						var outputFolder = config.upload.uploadPath + '/' + filename + extension;
+						var filename = filename + extension;
 
-						console.log('From ' + request.file.path + ' To ' + outputFolder);
-						fs.rename(request.file.path, outputFolder, function(err) {
-							if (err) {
-								fs.unlink(request.file.path);
-								response.writeHead(errorMap.server.INTERNAL_SERVER_ERROR.responseCode, headerContentType);
-								response.write("{reason: " + errorMap.server.INTERNAL_SERVER_ERROR.message + " description:" + err.message + "}");
-								response.end();
-							} else {
-								response.writeHead(200, headerContentType);
-								response.write("{reason: 'File succefully saved!', description:" + JSON.stringify(request.file) + "}");
-								response.end();
-							}
-						});
+						try {
+							fileManagement.moveFileToPermanentFolder(request.file.path,filename);
+							response.writeHead(200, headerContentType);
+							response.write("{reason: 'File succefully saved!', description:" + JSON.stringify(request.file) + "}");
+							response.end();
+						} catch (err) {
+							response.writeHead(err.responseCode, headerContentType);
+							response.write("{reason: " + err.message + " description:" + serverFailureMessage + "}");
+							response.end();
+						}
 					}
 				}
 			});
@@ -94,7 +90,7 @@ app.post('/', function(request, response) {
 	});
 });
 
-// Ask to the service keep listening the (SERVICE_PORT constant)
+// Ask to the service keep listening the (constant SERVICE_PORT)
 app.listen(config.server.servicePort, function() {
 	console.log('Running service at ' + config.server.servicePort + ' Port');
 });
