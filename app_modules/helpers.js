@@ -1,9 +1,9 @@
-const config = require('../config/config.js');
+const Config = require('../config/Config.js');
 
 var helpers = {
 	// Verify if the mimetype is a valid one
 	validateMimeType : function(context) {
-		return (config.upload.validMimeType.indexOf(context) >= 0 ? true : false);
+		return (Config.UPLOAD.VALID_MIME_TYPE.indexOf(context) >= 0 ? true : false);
 	}
 }
 
